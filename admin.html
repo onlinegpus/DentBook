@@ -62,7 +62,7 @@
         </div>
 
         <!-- Calendar Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-10">
+        <div id="calendar-grid" class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-10">
             <!-- Sunday -->
             <div class="flex flex-col gap-3">
                 <div id="header-0" class="text-center font-bold text-gray-700 bg-white p-2 rounded shadow-sm border-t-4 border-blue-500">Sunday</div>
@@ -284,7 +284,7 @@
                 document.getElementById(`header-${i}`).innerHTML = `${days[i]} <span class="text-xs font-normal text-gray-500 inline-block ml-1">${current.getDate()}/${current.getMonth()+1}</span>`;
                 
                 // Update Slots Data Attribute
-                const col = document.querySelector(`.grid-cols-5`).children[i];
+                const col = document.getElementById('calendar-grid').children[i];
                 col.querySelectorAll('.slot-cell').forEach(slot => slot.setAttribute('data-day', dateStr));
             }
         }
