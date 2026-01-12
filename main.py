@@ -7,6 +7,7 @@ from uuid import uuid4, UUID
 import datetime
 import sqlite3
 import random
+import os
 # --- App Configuration ---
 app = FastAPI(
     title="Task Management API",
@@ -420,4 +421,5 @@ async def toggle_global_block(data: GlobalBlock):
 # This allows you to run the file directly with Python (e.g., `python main.py`)
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
