@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin - Dent4Book</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-800 min-h-screen text-gray-100">
+
+    <!-- Login Overlay -->
+    <div id="admin-login" class="fixed inset-0 bg-gray-900 flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-8 rounded shadow-lg border border-gray-700 w-96">
+            <h2 class="text-2xl font-bold mb-4 text-center">Admin Access</h2>
+            <input type="text" id="adm-user" placeholder="Username" class="w-full p-2 mb-3 bg-gray-700 rounded border border-gray-600">
+            <input type="password" id="adm-pass" placeholder="Password" class="w-full p-2 mb-4 bg-gray-700 rounded border border-gray-600">
+            <button onclick="adminLogin()" class="w-full bg-blue-600 py-2 rounded font-bold hover:bg-blue-500">Login</button>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="hidden p-6 max-w-7xl mx-auto">
+        <header class="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
+            <h1 class="text-3xl font-bold text-blue-400">Super Admin Control</h1>
+            <button onclick="location.reload()" class="text-red-400 hover:text-red-300">Logout</button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- User Management -->
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-gray-700 p-4 rounded shadow">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Users Management</h2>
+                        <button onclick="deactivateAll()" class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700">⚠ Deactivate ALL Users</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-300">
+                            <thead class="bg-gray-600 uppercase">
+                                <tr>
+                                    <th class="p-3">Student ID</th>
+                                    <th class="p-3">Name</th>
+                                    <th class="p-3">Password</th>
+                                    <th class="p-3">Phone</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-table" class="divide-y divide-gray-600"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="space-y-6">
+                <div class="bg-gray-700 p-4 rounded shadow">
+                    <h2 class="text-xl font-bold mb-4">System Messages</h2>
+                    
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-gray-400 mb-1">New Registration Message (Pending)</label>
+                        <textarea id="msg-pending" rows="4" class="w-full bg-gray-600 p-2 rounded text-sm"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-gray-400 mb-1">Re-subscriber Message (Expired)</label>
+                        <textarea id="msg-expired" rows="4" class="w-full bg-gray-600 p-2 rounded text-sm"></textarea>
+                    </div>
+
+                    <button onclick="saveSettings()" class="w-full bg-green-600 py-2 rounded font-bold hover:bg-green-500">Save Messages</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+
+        function adminLogin() {
+            const u = document.getElementById('adm-user').value;
+            const p = document.getElementById('adm-pass').value;
+            if(u === 'admin' && p === 'admin123') {
+                document.getElementById('admin-login').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                loadData();
+            } else {
+                alert("Invalid Admin Credentials");
+            }
+        }
+
+        async function loadData() {
+            // Load Users
+            const resUsers = await fetch(`${API_URL}/admin/users`);
+            const users = await resUsers.json();
+            renderUsers(users);
+
+            // Load Settings
+            const resSettings = await fetch(`${API_URL}/admin/settings`);
+            const settings = await resSettings.json();
+            document.getElementById('msg-pending').value = settings.msg_pending || "";
+            document.getElementById('msg-expired').value = settings.msg_expired || "";
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('user-table');
+            tbody.innerHTML = users.map(u => `
+                <tr class="hover:bg-gray-600">
+                    <td class="p-3 font-mono">${u.student_id}</td>
+                    <td class="p-3">${u.username}</td>
+                    <td class="p-3 font-mono text-xs text-gray-400">${u.password}</td>
+                    <td class="p-3 text-xs">${u.country_code} ${u.phone}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-1 rounded text-xs font-bold ${getStatusColor(u.status)}">
+                            ${u.status.toUpperCase()}
+                        </span>
+                    </td>
+                    <td class="p-3">
+                        ${u.status === 'pending' || u.status === 'expired' ? 
+                            `<button onclick="approveUser('${u.id}')" class="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-500">Approve</button>` 
+                            : '<span class="text-green-400 text-xs">Active</span>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getStatusColor(status) {
+            if(status === 'active') return 'bg-green-900 text-green-300';
+            if(status === 'pending') return 'bg-yellow-900 text-yellow-300';
+            return 'bg-red-900 text-red-300';
+        }
+
+        async function approveUser(id) {
+            await fetch(`${API_URL}/admin/approve/${id}`, { method: 'POST' });
+            loadData();
+        }
+
+        async function deactivateAll() {
+            if(confirm("ARE YOU SURE? This will deactivate ALL users (End of Semester). They will need to re-subscribe.")) {
+                await fetch(`${API_URL}/admin/deactivate-all`, { method: 'POST' });
+                loadData();
+            }
+        }
+
+        async function saveSettings() {
+            const settings = [
+                { key: 'msg_pending', value: document.getElementById('msg-pending').value },
+                { key: 'msg_expired', value: document.getElementById('msg-expired').value }
+            ];
+            await fetch(`${API_URL}/admin/settings`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(settings)
+            });
+            alert("Messages Saved!");
+        }
+    </script>
+</body>
+</html>

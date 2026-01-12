@@ -35,6 +35,7 @@ class Doctor(BaseModel):
     matches: List[str] = [] # List of doctor IDs this user is connected to
     phone: Optional[str] = None
     country_code: Optional[str] = None
+    status: str = "pending" # pending, active, expired
 
 class LoginRequest(BaseModel):
     student_id: str
@@ -83,6 +84,14 @@ class GlobalBlock(BaseModel):
     day_of_week: str # Sun, Mon, Tue, Wed, Thu
     session: str # Morning, Afternoon
 
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str
+
+class AdminSettings(BaseModel):
+    key: str
+    value: str
+
 # --- Database Setup (SQLite) ---
 DB_FILE = "dentbook.db"
 
@@ -99,6 +108,7 @@ def init_db():
         try:
             conn.execute("ALTER TABLE doctors ADD COLUMN phone TEXT")
             conn.execute("ALTER TABLE doctors ADD COLUMN country_code TEXT")
+            conn.execute("ALTER TABLE doctors ADD COLUMN status TEXT DEFAULT 'pending'")
         except sqlite3.OperationalError:
             pass
 
@@ -149,6 +159,23 @@ def init_db():
             session TEXT,
             PRIMARY KEY (doctor_id, day_of_week, session)
         )""")
+        
+        conn.execute("""CREATE TABLE IF NOT EXISTS system_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )""")
+        
+        # Default Settings
+        defaults = {
+            "msg_pending": "Your account is pending approval. Please transfer 1 OMR per semester to +968 97597616 and send the receipt via WhatsApp.",
+            "msg_expired": "Your subscription has expired. Please subscribe again to activate your account."
+        }
+        for k, v in defaults.items():
+            conn.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)", (k, v))
+        
+        # Migration for status column if missing in existing DB
+        try: conn.execute("ALTER TABLE doctors ADD COLUMN status TEXT DEFAULT 'pending'")
+        except: pass
 
 init_db()
 
@@ -174,6 +201,10 @@ async def read_index():
 async def read_admin():
     return FileResponse("admin.html")
 
+@app.get("/super_admin.html", tags=["UI"])
+async def read_super_admin():
+    return FileResponse("super_admin.html")
+
 # --- Auth & Users ---
 
 # Note: We use 'r4' in the database schema for the patient ID, 
@@ -182,6 +213,7 @@ async def read_admin():
 @app.post("/register", status_code=201)
 async def register(doctor: Doctor):
     with sqlite3.connect(DB_FILE) as conn:
+        doctor.student_id = doctor.student_id.lower().strip() # Case insensitive
         cursor = conn.cursor()
         # Check if exists
         existing = cursor.execute("SELECT 1 FROM doctors WHERE student_id = ?", (doctor.student_id,)).fetchone()
@@ -190,19 +222,30 @@ async def register(doctor: Doctor):
         
         doctor.id = str(uuid4())
         doctor.color = get_random_color() # Assign random color
-        cursor.execute("INSERT INTO doctors (id, student_id, username, password, color, phone, country_code) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                       (doctor.id, doctor.student_id, doctor.username, doctor.password, doctor.color, doctor.phone, doctor.country_code))
+        doctor.status = "pending"
+        cursor.execute("INSERT INTO doctors (id, student_id, username, password, color, phone, country_code, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                       (doctor.id, doctor.student_id, doctor.username, doctor.password, doctor.color, doctor.phone, doctor.country_code, doctor.status))
         conn.commit()
-        return doctor
+        
+        # Get pending message
+        msg = conn.execute("SELECT value FROM system_settings WHERE key='msg_pending'").fetchone()[0]
+        return {"message": msg}
 
 @app.post("/login")
 async def login(creds: LoginRequest):
     with sqlite3.connect(DB_FILE) as conn:
         conn.row_factory = sqlite3.Row
+        student_id = creds.student_id.lower().strip()
         row = conn.execute("SELECT * FROM doctors WHERE student_id = ? AND password = ?", 
-                           (creds.student_id, creds.password)).fetchone()
+                           (student_id, creds.password)).fetchone()
         if not row:
             raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        if row['status'] != 'active':
+            key = "msg_expired" if row['status'] == 'expired' else "msg_pending"
+            msg = conn.execute("SELECT value FROM system_settings WHERE key=?", (key,)).fetchone()[0]
+            # Return 403 Forbidden with the specific message
+            raise HTTPException(status_code=403, detail=msg)
         
         doc = dict(row)
         doc['matches'] = get_matches_list(doc['id'])
@@ -242,6 +285,17 @@ async def update_color(doctor_id: str, update: ColorUpdate):
         conn.execute("UPDATE doctors SET color = ? WHERE id = ?", (update.color, doctor_id))
         conn.commit()
     return {"status": "updated"}
+
+@app.put("/doctors/{doctor_id}/password")
+async def change_password(doctor_id: str, data: PasswordChange):
+    with sqlite3.connect(DB_FILE) as conn:
+        row = conn.execute("SELECT password FROM doctors WHERE id = ?", (doctor_id,)).fetchone()
+        if not row or row[0] != data.old_password:
+            raise HTTPException(status_code=400, detail="Incorrect old password")
+        
+        conn.execute("UPDATE doctors SET password = ? WHERE id = ?", (data.new_password, doctor_id))
+        conn.commit()
+    return {"status": "changed"}
 
 # --- Matching ---
 
@@ -416,6 +470,44 @@ async def toggle_global_block(data: GlobalBlock):
             conn.execute("INSERT INTO global_blocks (doctor_id, day_of_week, session) VALUES (?, ?, ?)", (data.doctor_id, data.day_of_week, data.session))
         conn.commit()
     return {"status": "toggled"}
+
+# --- Super Admin ---
+
+@app.get("/admin/users")
+async def get_all_users():
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute("SELECT * FROM doctors").fetchall()
+        return [dict(r) for r in rows]
+
+@app.post("/admin/approve/{user_id}")
+async def approve_user(user_id: str):
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute("UPDATE doctors SET status = 'active' WHERE id = ?", (user_id,))
+        conn.commit()
+    return {"status": "approved"}
+
+@app.post("/admin/deactivate-all")
+async def deactivate_all_users():
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute("UPDATE doctors SET status = 'expired'")
+        conn.commit()
+    return {"status": "all_expired"}
+
+@app.get("/admin/settings")
+async def get_settings():
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute("SELECT * FROM system_settings").fetchall()
+        return {r['key']: r['value'] for r in rows}
+
+@app.post("/admin/settings")
+async def update_settings(settings: List[AdminSettings]):
+    with sqlite3.connect(DB_FILE) as conn:
+        for s in settings:
+            conn.execute("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)", (s.key, s.value))
+        conn.commit()
+    return {"status": "saved"}
 
 # --- Development Server Runner ---
 # This allows you to run the file directly with Python (e.g., `python main.py`)

@@ -21,6 +21,7 @@
         <h1 class="text-2xl font-bold text-blue-600">Dent4Book <span class="text-sm text-gray-500 font-normal">Students Clinic</span></h1>
         <div class="flex items-center gap-4">
             <input type="color" id="my-color" class="w-8 h-8 cursor-pointer rounded border" title="Change My Color" onchange="changeColor(this.value)">
+            <button onclick="openPassModal()" class="text-sm text-blue-600 hover:underline">Change Password</button>
             <span id="user-display" class="font-semibold text-gray-700"></span>
             <button onclick="logout()" class="text-red-500 text-sm hover:underline">Sign Out</button>
         </div>
@@ -61,7 +62,7 @@
         </div>
 
         <!-- Calendar Grid -->
-        <div class="grid grid-cols-5 gap-4 mb-10">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-10">
             <!-- Sunday -->
             <div class="flex flex-col gap-3">
                 <div id="header-0" class="text-center font-bold text-gray-700 bg-white p-2 rounded shadow-sm border-t-4 border-blue-500">Sunday</div>
@@ -129,7 +130,7 @@
             <h3 class="font-bold text-lg mb-2">My Patients List (Private)</h3>
             <form id="patient-form" class="flex gap-2 mb-4">
                 <input type="text" id="new-p-name" placeholder="Patient Name" class="border p-2 rounded flex-1" required>
-                <input type="text" id="new-p-r4" placeholder="R4 ID (Optional)" class="border p-2 rounded w-32">
+                <input type="text" id="new-p-r4" placeholder="R4 (Optional)" class="border p-2 rounded w-32">
                 <button type="submit" class="bg-green-600 text-white px-4 rounded hover:bg-green-700">Add</button>
             </form>
             <div id="patient-list" class="flex flex-wrap gap-2"></div>
@@ -200,6 +201,21 @@
         </div>
     </div>
 
+    <!-- Change Password Modal -->
+    <div id="pass-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg w-full max-w-sm">
+            <h3 class="text-xl font-bold mb-4">Change Password</h3>
+            <form id="pass-form" class="space-y-3">
+                <input type="password" id="old-pass" placeholder="Old Password" class="w-full border p-2 rounded" required>
+                <input type="password" id="new-pass" placeholder="New Password" class="w-full border p-2 rounded" required>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="document.getElementById('pass-modal').classList.add('hidden')" class="px-4 py-2 text-gray-500">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- View Details Modal -->
     <div id="view-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded-lg w-full max-w-sm shadow-xl">
@@ -265,7 +281,7 @@
                 const dateStr = current.toISOString().split('T')[0]; // YYYY-MM-DD
                 
                 // Update Header
-                document.getElementById(`header-${i}`).innerHTML = `${days[i]} <span class="text-xs font-normal text-gray-500 block">${current.getDate()}/${current.getMonth()+1}</span>`;
+                document.getElementById(`header-${i}`).innerHTML = `${days[i]} <span class="text-xs font-normal text-gray-500 inline-block ml-1">${current.getDate()}/${current.getMonth()+1}</span>`;
                 
                 // Update Slots Data Attribute
                 const col = document.querySelector(`.grid-cols-5`).children[i];
@@ -484,7 +500,7 @@
             const content = document.getElementById('view-content');
             content.innerHTML = `
                 <p><strong>Patient:</strong> ${appt.patient_name}</p>
-                <p><strong>R4 ID:</strong> ${appt.patient_r4 || 'N/A'}</p>
+                <p><strong>R4:</strong> ${appt.patient_r4 || 'N/A'}</p>
                 <p><strong>Type:</strong> ${appt.type}</p>
                 <p><strong>Duration:</strong> ${appt.duration}</p>
                 <p><strong>Details:</strong> ${appt.other_type_details || 'None'}</p>
@@ -642,6 +658,25 @@
                 loadData();
             }
         }
+
+        // --- Password Change ---
+        function openPassModal() {
+            document.getElementById('pass-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('pass-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const old_password = document.getElementById('old-pass').value;
+            const new_password = document.getElementById('new-pass').value;
+            
+            const res = await fetch(`${API_URL}/doctors/${user.id}/password`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ old_password, new_password })
+            });
+            if(res.ok) { alert("Password Changed!"); document.getElementById('pass-modal').classList.add('hidden'); e.target.reset(); }
+            else { alert("Incorrect old password"); }
+        });
 
         // --- Drag and Drop Logic ---
         function allowDrop(ev) {
