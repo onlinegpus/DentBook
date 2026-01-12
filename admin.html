@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dentist Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .slot-cell { transition: background-color 0.2s; position: relative; min-height: 5rem; }
+        .slot-cell:hover { background-color: #f9fafb; }
+        .appt-card { transition: transform 0.1s; }
+        .appt-card:hover { transform: scale(1.02); z-index: 10; cursor: grab; }
+        .appt-card:active { cursor: grabbing; }
+        .blocked { background-color: #e5e7eb !important; pointer-events: none; opacity: 0.6; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <!-- Navbar -->
+    <nav class="bg-white shadow p-4 flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-blue-600">Dent4Book <span class="text-sm text-gray-500 font-normal">Students Clinic</span></h1>
+        <div class="flex items-center gap-4">
+            <input type="color" id="my-color" class="w-8 h-8 cursor-pointer rounded border" title="Change My Color" onchange="changeColor(this.value)">
+            <span id="user-display" class="font-semibold text-gray-700"></span>
+            <button onclick="logout()" class="text-red-500 text-sm hover:underline">Sign Out</button>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto p-6">
+        
+        <!-- Controls -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <!-- Schedule Info -->
+            <div>
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <button id="btn-prev" onclick="changeWeek(-1)" class="text-gray-400 hover:text-blue-600 text-2xl leading-none disabled:opacity-30 disabled:cursor-not-allowed">&#8249;</button>
+                    <span id="week-label">Current Week</span>
+                    <button id="btn-next" onclick="changeWeek(1)" class="text-gray-400 hover:text-blue-600 text-2xl leading-none disabled:opacity-30 disabled:cursor-not-allowed">&#8250;</button>
+                </h2>
+                <p class="text-sm text-gray-500 ml-6">Sun - Thu | 9AM-12PM & 2PM-5PM</p>
+            </div>
+            
+            <!-- Search & Match -->
+            <div class="relative">
+                <label class="block text-xs font-bold text-gray-500 mb-1">Find Peer</label>
+                <div class="flex gap-2 items-center">
+                    <input type="text" id="search-input" placeholder="Search Student ID..." class="border p-2 rounded w-full">
+                    <button onclick="performSearch()" class="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">Search</button>
+                </div>
+                <div id="search-results" class="absolute top-12 left-0 w-full bg-white shadow-lg rounded hidden z-20 border p-2 max-h-60 overflow-auto"></div>
+            </div>
+
+            <!-- Requests & Connected -->
+            <div class="bg-white p-3 rounded shadow text-sm">
+                <h3 class="font-bold text-gray-700 mb-2">Match Requests</h3>
+                <div id="requests-list" class="mb-2 text-gray-500 italic">No pending requests</div>
+                
+                <h3 class="font-bold text-gray-700 mb-2 border-t pt-2">Connected Doctors</h3>
+                <div id="connected-list" class="flex flex-wrap gap-2"></div>
+            </div>
+        </div>
+
+        <!-- Calendar Grid -->
+        <div class="grid grid-cols-5 gap-4 mb-10">
+            <!-- Sunday -->
+            <div class="flex flex-col gap-3">
+                <div id="header-0" class="text-center font-bold text-gray-700 bg-white p-2 rounded shadow-sm border-t-4 border-blue-500">Sunday</div>
+                <div id="cont-Sun-Morning" class="bg-white rounded shadow-sm border border-gray-200 flex flex-col relative group">
+                    <div class="bg-gray-50 text-gray-500 text-xs font-bold text-center py-1 border-b flex justify-between px-2 items-center"><span>9AM - 12PM</span> <button onclick="toggleGlobalBlock('Sun', 'Morning')" class="text-red-300 hover:text-red-500 hidden group-hover:block" title="Disable Globally">&oslash;</button></div>
+                    <div class="p-2 min-h-[10rem] slot-cell flex flex-col gap-1" data-day="Sun" data-session="Morning" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div id="cont-Sun-Afternoon" class="bg-white rounded shadow-sm border border-gray-200 flex flex-col relative group">
+                    <div class="bg-gray-50 text-gray-500 text-xs font-bold text-center py-1 border-b flex justify-between px-2 items-center"><span>2PM - 5PM</span> <button onclick="toggleGlobalBlock('Sun', 'Afternoon')" class="text-red-300 hover:text-red-500 hidden group-hover:block" title="Disable Globally">&oslash;</button></div>
+                    <div class="p-2 min-h-[10rem] slot-cell flex flex-col gap-1" data-day="Sun" data-session="Afternoon" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+            </div>
+            <!-- Monday -->
+            <div class="flex flex-col gap-3">
+                <div id="header-1" class="text-center font-bold text-gray-700 bg-white p-2 rounded shadow-sm border-t-4 border-blue-500">Monday</div>
+                <div id="cont-Mon-Morning" class="bg-white rounded shadow-sm border border-gray-200 flex flex-col relative group">
+                    <div class="bg-gray-50 text-gray-500 text-xs font-bold text-center py-1 border-b flex justify-between px-2 items-center"><span>9AM - 12PM</span> <button onclick="toggleGlobalBlock('Mon', 'Morning')" class="text-red-300 hover:text-red-500 hidden group-hover:block" title="Disable Globally">&oslash;</button></div>
+                    <div class="p-2 min-h-[10rem] slot-cell flex flex-col gap-1" data-day="Mon" data-session="Morning" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div id="cont-Mon-Afternoon" class="bg-white rounded shadow-sm border border-gray-200 flex flex-col relative group">
+                    <div class="bg-gray-50 text-gray-500 text-xs font-bold text-center py-1 border-b flex justify-between px-2 items-center"><span>2PM - 5PM</span> <button onclick="toggleGlobalBlock('Mon', 'Afternoon')" class="text-red-300 hover:text-red-500 hidden group-hover:block" title="Disable Globally">&oslash;</button></div>
+                    <div class="p-2 min-h-[10rem] slot-cell flex flex-col gap-1" data-day="Mon" data-session="Afternoon" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+            </div>
+            <!-- Tuesday -->
+            <div class="flex flex-col gap-3">
+                <div id="header-2" class="text-center font-bold text-gray-700 bg-white p-2 rounded shadow-sm border-t-4 border-blue-500">Tuesday</div>
+                <div id="cont-Tue-Morning" class="bg-white rounded shadow-sm border border-gray-200 flex flex-col relative group">
+                    <div class="bg-gray-50 text-gray-500 text-xs font-bold text-center py-1 border-b flex justify-between px-2 items-center"><span>9AM - 12PM</span> <button onclick="toggleGlobalBlock('Tue', 'Morning')" class="text-red-300 hover:text-red-500 hidden group-hover:block" title="Disable Globally">&oslash;</button></div>
+                    <div class="p-2 min-h-[10rem] slot-cell flex flex-col gap-1" data-day="Tue" data-session="Morning" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div id="cont-Tue-Afternoon" class="bg-white rounded shadow-sm border border-gray-200 flex flex-col relative group">
+                    <div class="bg-gray-50 text-gray-500 text-xs font-bold text-center py-1 border-b flex justify-between px-2 items-center"><span>2PM - 5PM</span> <button onclick="toggleGlobalBlock('Tue', 'Afternoon')" class="text-red-300 hover:text-red-500 hidden group-hover:block" title="Disable Globally">&oslash;</button></div>
+                    <div class="p-2 min-h-[10rem] slot-cell flex flex-col gap-1" data-day="Tue" data-session="Afternoon" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+            </div>
+            <!-- Wednesday -->
+            <div class="flex flex-col gap-3">
+                <div id="header-3" class="text-center font-bold text-gray-700 bg-white p-2 rounded shadow-sm border-t-4 border-blue-500">Wednesday</div>
+                <div id="cont-Wed-Morning" class="bg-white rounded shadow-sm border border-gray-200 flex flex-col relative group">
+                    <div class="bg-gray-50 text-gray-500 text-xs font-bold text-center py-1 border-b flex justify-between px-2 items-center"><span>9AM - 12PM</span> <button onclick="toggleGlobalBlock('Wed', 'Morning')" class="text-red-300 hover:text-red-500 hidden group-hover:block" title="Disable Globally">&oslash;</button></div>
+                    <div class="p-2 min-h-[10rem] slot-cell flex flex-col gap-1" data-day="Wed" data-session="Morning" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div id="cont-Wed-Afternoon" class="bg-white rounded shadow-sm border border-gray-200 flex flex-col relative group">
+                    <div class="bg-gray-50 text-gray-500 text-xs font-bold text-center py-1 border-b flex justify-between px-2 items-center"><span>2PM - 5PM</span> <button onclick="toggleGlobalBlock('Wed', 'Afternoon')" class="text-red-300 hover:text-red-500 hidden group-hover:block" title="Disable Globally">&oslash;</button></div>
+                    <div class="p-2 min-h-[10rem] slot-cell flex flex-col gap-1" data-day="Wed" data-session="Afternoon" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+            </div>
+            <!-- Thursday -->
+            <div class="flex flex-col gap-3">
+                <div id="header-4" class="text-center font-bold text-gray-700 bg-white p-2 rounded shadow-sm border-t-4 border-blue-500">Thursday</div>
+                <div id="cont-Thu-Morning" class="bg-white rounded shadow-sm border border-gray-200 flex flex-col relative group">
+                    <div class="bg-gray-50 text-gray-500 text-xs font-bold text-center py-1 border-b flex justify-between px-2 items-center"><span>9AM - 12PM</span> <button onclick="toggleGlobalBlock('Thu', 'Morning')" class="text-red-300 hover:text-red-500 hidden group-hover:block" title="Disable Globally">&oslash;</button></div>
+                    <div class="p-2 min-h-[10rem] slot-cell flex flex-col gap-1" data-day="Thu" data-session="Morning" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+                <div id="cont-Thu-Afternoon" class="bg-white rounded shadow-sm border border-gray-200 flex flex-col relative group">
+                    <div class="bg-gray-50 text-gray-500 text-xs font-bold text-center py-1 border-b flex justify-between px-2 items-center"><span>2PM - 5PM</span> <button onclick="toggleGlobalBlock('Thu', 'Afternoon')" class="text-red-300 hover:text-red-500 hidden group-hover:block" title="Disable Globally">&oslash;</button></div>
+                    <div class="p-2 min-h-[10rem] slot-cell flex flex-col gap-1" data-day="Thu" data-session="Afternoon" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patient List Section (Moved to Bottom) -->
+        <div class="bg-white p-4 rounded shadow mb-6">
+            <h3 class="font-bold text-lg mb-2">My Patients List (Private)</h3>
+            <form id="patient-form" class="flex gap-2 mb-4">
+                <input type="text" id="new-p-name" placeholder="Patient Name" class="border p-2 rounded flex-1" required>
+                <input type="text" id="new-p-r4" placeholder="R4 ID (Optional)" class="border p-2 rounded w-32">
+                <button type="submit" class="bg-green-600 text-white px-4 rounded hover:bg-green-700">Add</button>
+            </form>
+            <div id="patient-list" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <!-- Legend -->
+        <div id="legend" class="flex gap-4 text-sm text-gray-600">
+            <!-- Injected by JS -->
+        </div>
+    </div>
+
+    <!-- Appointment Modal -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg w-full max-w-lg">
+            <h3 class="text-xl font-bold mb-4">Book Appointment</h3>
+            <form id="booking-form" class="space-y-3">
+                <input type="hidden" id="slot-day">
+                <input type="hidden" id="slot-session">
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-500">Select Patient</label>
+                    <select id="p-select" class="w-full border p-2 rounded" required>
+                        <option value="">-- Select from List --</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500">Duration</label>
+                    <select id="p-duration" class="w-full border p-2 rounded">
+                        <option value="15m">15 Minutes</option>
+                        <option value="30m">30 Minutes</option>
+                        <option value="45m">45 Minutes</option>
+                        <option value="1h">1 Hour</option>
+                        <option value="1h 15m">1 Hour 15 Min</option>
+                        <option value="1h 30m">1 Hour 30 Min</option>
+                        <option value="2h">2 Hours</option>
+                        <option value="3h">3 Hours</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500">Type</label>
+                    <select id="p-type" class="w-full border p-2 rounded" onchange="checkOther(this)">
+                        <option>Check up</option>
+                        <option>Scaling</option>
+                        <option>Restoration</option>
+                        <option>Extraction</option>
+                        <option>RCT</option>
+                        <option>Obturation</option>
+                        <option>Surgical extraction</option>
+                        <option>Implant</option>
+                        <option>Preparation</option>
+                        <option>Crown cementation</option>
+                        <option>Post and core</option>
+                        <option>Pedo</option>
+                        <option>Ortho</option>
+                        <option>RSD</option>
+                        <option value="Others">Others</option>
+                    </select>
+                    <input type="text" id="p-other" class="w-full border p-2 rounded mt-2 hidden" placeholder="Specify other type...">
+                </div>
+
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 text-gray-500">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Details Modal -->
+    <div id="view-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg w-full max-w-sm shadow-xl">
+            <h3 class="text-xl font-bold mb-4 text-blue-600 border-b pb-2">Appointment Details</h3>
+            <div id="view-content" class="space-y-3 text-sm text-gray-700"></div>
+            <div class="mt-6 text-right">
+                <button onclick="document.getElementById('view-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 font-semibold">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:8000';
+        let user = JSON.parse(localStorage.getItem('dentist_user'));
+        if(!user) window.location.href = 'index.html';
+
+        document.getElementById('user-display').innerText = `Dr. ${user.username}`;
+        document.getElementById('my-color').value = user.color;
+        
+        // State
+        let allAppointments = [];
+        let globalBlockedDays = [];
+        let globalSlotBlocks = [];
+        let connectedDoctors = []; 
+        let myPatients = [];
+        let viewDate = new Date();
+        let initialDate = new Date(); // Reference for navigation limits
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu'];
+
+        // Duration Map for Sizing (15m = 1 unit)
+        const durationMap = {
+            "15m": "h-5", "30m": "h-8", "45m": "h-10", "1h": "h-14",
+            "1h 15m": "h-16", "1h 30m": "h-20", "2h": "h-28", "3h": "h-40"
+        };
+
+        // --- Date Logic ---
+        function initDate() {
+            const today = new Date();
+            const dayNum = today.getDay(); // 0=Sun, 5=Fri, 6=Sat
+            // If Friday(5) or Saturday(6), start next week (add days to reach Sunday)
+            // If Sun-Thu, start this week (subtract days to reach Sunday)
+            const offset = dayNum >= 5 ? (7 - dayNum) : -dayNum;
+            viewDate.setDate(today.getDate() + offset);
+            viewDate.setHours(0,0,0,0);
+            initialDate = new Date(viewDate); // Store initial week
+        }
+        initDate();
+
+        function updateGridDates() {
+            const start = new Date(viewDate);
+            const options = { month: 'numeric', day: 'numeric' };
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            
+            // Update Label
+            const endOfWeek = new Date(start);
+            endOfWeek.setDate(endOfWeek.getDate() + 4);
+            document.getElementById('week-label').innerText = `${start.getDate()} ${monthNames[start.getMonth()]} - ${endOfWeek.getDate()} ${monthNames[endOfWeek.getMonth()]}`;
+
+            // Update Columns
+            for(let i=0; i<5; i++) {
+                const current = new Date(start);
+                current.setDate(start.getDate() + i);
+                const dateStr = current.toISOString().split('T')[0]; // YYYY-MM-DD
+                
+                // Update Header
+                document.getElementById(`header-${i}`).innerHTML = `${days[i]} <span class="text-xs font-normal text-gray-500 block">${current.getDate()}/${current.getMonth()+1}</span>`;
+                
+                // Update Slots Data Attribute
+                const col = document.querySelector(`.grid-cols-5`).children[i];
+                col.querySelectorAll('.slot-cell').forEach(slot => slot.setAttribute('data-day', dateStr));
+            }
+        }
+
+        // --- Render Calendar ---
+        function renderCalendar(appointments, blockedDays, globalBlocks) {
+            // Clear previous slots
+            document.querySelectorAll('.slot-cell').forEach(cell => {
+                cell.innerHTML = '';
+                cell.className = "p-2 min-h-[10rem] slot-cell flex flex-col gap-1"; // Reset classes
+                // Reset container style
+                const cont = cell.parentElement;
+                cont.classList.remove('bg-gray-100', 'opacity-75');
+                // Remove any existing overlay
+                const overlay = cont.querySelector('.block-overlay');
+                if(overlay) overlay.remove();
+            });
+
+            // Fill slots
+            document.querySelectorAll('.slot-cell').forEach(cell => {
+                const day = cell.getAttribute('data-day');
+                const session = cell.getAttribute('data-session');
+                
+                // Determine Day Name (Sun, Mon...) from parent ID (cont-Sun-Morning)
+                const dayName = cell.parentElement.id.split('-')[1];
+
+                // Check Global Block
+                const myBlock = globalBlocks.find(b => b.day_of_week === dayName && b.session === session && b.doctor_id === user.id);
+                const peerBlock = globalBlocks.find(b => b.day_of_week === dayName && b.session === session && b.doctor_id !== user.id);
+
+                if (myBlock) {
+                    const cont = cell.parentElement;
+                    cont.classList.add('bg-gray-100', 'opacity-75');
+                    cont.insertAdjacentHTML('beforeend', `<div class="block-overlay absolute inset-0 flex items-center justify-center bg-gray-200 bg-opacity-80 z-20"><button onclick="toggleGlobalBlock('${dayName}', '${session}')" class="bg-white border px-3 py-1 rounded text-sm shadow hover:bg-gray-50 text-gray-700">Restore</button></div>`);
+                    return; // Stop rendering appointments
+                } else if (peerBlock) {
+                    const cont = cell.parentElement;
+                    cont.classList.add('bg-gray-100', 'opacity-75');
+                    cont.insertAdjacentHTML('beforeend', `<div class="block-overlay absolute inset-0 flex items-center justify-center bg-gray-200 bg-opacity-80 z-20"><span class="text-gray-500 font-bold text-xs">Peer Disabled</span></div>`);
+                    return; // Stop rendering appointments
+                }
+
+                // Find Appointments
+                const appts = appointments.filter(a => a.day === day && a.session === session);
+                
+                appts.forEach(appt => {
+                    const dr = connectedDoctors.find(d => d.id === appt.doctor_id);
+                    const color = dr ? dr.color : '#ccc';
+                    
+                    const card = document.createElement('div');
+                    const heightClass = durationMap[appt.duration] || "h-16";
+                    card.className = `text-xs p-2 rounded text-white cursor-pointer shadow appt-card overflow-hidden ${heightClass}`;
+                    card.style.backgroundColor = color;
+                    card.id = `appt-${appt.id}`; // ID for Drag
+                    card.innerHTML = `
+                        <div class="flex items-center h-full gap-1">
+                            <div class="flex flex-col -space-y-1 justify-center">
+                                <button onclick="moveAppt(event, '${appt.id}', -1)" class="text-[10px] leading-none hover:text-white opacity-70 hover:opacity-100">▲</button>
+                                <button onclick="moveAppt(event, '${appt.id}', 1)" class="text-[10px] leading-none hover:text-white opacity-70 hover:opacity-100">▼</button>
+                            </div>
+                            <div class="flex-1 min-w-0 flex flex-col justify-center leading-tight">
+                                <div class="font-bold truncate text-xs">${appt.patient_name}</div>
+                                <div class="text-[9px] truncate opacity-90">${appt.type}</div>
+                            </div>
+                            <button onclick="deleteAppt(event, '${appt.id}')" class="text-sm hover:text-red-200 font-bold px-1 opacity-70 hover:opacity-100" title="Delete">&times;</button>
+                        </div>
+                    `;
+                    // Allow move/delete if it's me or a connected doctor (Shared Control)
+                    if(dr) {
+                        card.draggable = true;
+                        card.ondragstart = (e) => drag(e, appt.id);
+                        card.onclick = (e) => { e.stopPropagation(); viewAppt(appt.id); };
+                        card.title = "Click for Details, Drag to Move";
+                    }
+                    cell.appendChild(card);
+                });
+
+                // Add Button
+                const addBtn = document.createElement('div');
+                addBtn.className = "mt-auto text-xs text-blue-500 hover:text-blue-700 hover:underline cursor-pointer pt-2 font-semibold text-center border-t border-dashed border-gray-200";
+                addBtn.innerHTML = "+ Add";
+                addBtn.onclick = () => openModal(day, session);
+                cell.appendChild(addBtn);
+            });
+
+            // Update Legend
+            const legend = document.getElementById('legend');
+            legend.innerHTML = connectedDoctors.map(d => 
+                `<div class="flex items-center"><span class="w-3 h-3 rounded-full mr-1" style="background:${d.color}"></span> ${d.username}</div>`
+            ).join('');
+        }
+
+        async function loadData() {
+            // Refresh User Data (for matches)
+            const userRes = await fetch(`${API_URL}/doctors/me?id=${user.id}`);
+            if(userRes.ok) user = await userRes.json();
+
+            // Fetch Connected Doctors Details
+            connectedDoctors = [user];
+            if(user.matches.length > 0) {
+                const matchRes = await fetch(`${API_URL}/doctors/batch?ids=${user.matches.join(',')}`);
+                const matches = await matchRes.json();
+                connectedDoctors = [user, ...matches];
+            }
+
+            const ids = connectedDoctors.map(d => d.id).join(',');
+            const [apptRes, blockRes, reqRes, patRes] = await Promise.all([
+                fetch(`${API_URL}/appointments?doctor_ids=${ids}`),
+                fetch(`${API_URL}/blocked-days?doctor_id=${user.id}`),
+                fetch(`${API_URL}/match-requests?to_student_id=${user.student_id}`),
+                fetch(`${API_URL}/patients?doctor_id=${user.id}`)
+            ]);
+            
+            globalBlockedDays = await blockRes.json();
+            globalSlotBlocks = await (await fetch(`${API_URL}/global-blocks?doctor_ids=${ids}`)).json();
+            const appts = await apptRes.json();
+            allAppointments = appts;
+            
+            updateGridDates();
+            renderCalendar(appts, globalBlockedDays, globalSlotBlocks);
+            renderRequests(await reqRes.json());
+            renderConnectedList();
+            
+            myPatients = await patRes.json();
+            renderPatients(myPatients);
+        }
+
+        function changeWeek(offset) {
+            const newDate = new Date(viewDate);
+            newDate.setDate(newDate.getDate() + (offset * 7));
+            
+            // Check Limits: -1 week to +2 weeks from initialDate
+            const diffTime = newDate - initialDate;
+            const diffWeeks = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7));
+
+            if (diffWeeks < -1 || diffWeeks > 2) return;
+
+            viewDate = newDate;
+            
+            // Update Buttons
+            document.getElementById('btn-prev').disabled = (diffWeeks <= -1);
+            document.getElementById('btn-next').disabled = (diffWeeks >= 2);
+
+            loadData(); // Reload to refresh grid dates and filter appointments
+        }
+
+        async function toggleGlobalBlock(dayName, session) {
+            await fetch(`${API_URL}/global-blocks`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ doctor_id: user.id, day_of_week: dayName, session: session })
+            });
+            loadData();
+        }
+
+        // --- Booking Logic ---
+        function openModal(day, session) {
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('slot-day').value = day;
+            document.getElementById('slot-session').value = session;
+            
+            // Populate Select
+            const sel = document.getElementById('p-select');
+            sel.innerHTML = '<option value="">-- Select from List --</option>';
+            myPatients.forEach(p => {
+                sel.innerHTML += `<option value="${p.id}">${p.name} ${p.r4 ? '(R4: '+p.r4+')' : ''}</option>`;
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            document.getElementById('booking-form').reset();
+            document.getElementById('p-other').classList.add('hidden');
+        }
+
+        function checkOther(select) {
+            const otherInput = document.getElementById('p-other');
+            if(select.value === 'Others') otherInput.classList.remove('hidden');
+            else otherInput.classList.add('hidden');
+        }
+
+        document.getElementById('booking-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const patId = document.getElementById('p-select').value;
+            const pat = myPatients.find(p => p.id === patId);
+            if(!pat) return;
+
+            const data = {
+                doctor_id: user.id,
+                day: document.getElementById('slot-day').value,
+                session: document.getElementById('slot-session').value,
+                patient_name: pat.name,
+                patient_r4: pat.r4 || "",
+                duration: document.getElementById('p-duration').value,
+                type: document.getElementById('p-type').value,
+                other_type_details: document.getElementById('p-other').value
+            };
+
+            await fetch(`${API_URL}/appointments`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            closeModal();
+            loadData();
+        });
+
+        function viewAppt(id) {
+            const appt = allAppointments.find(a => a.id === id);
+            if(!appt) return;
+            
+            const dr = connectedDoctors.find(d => d.id === appt.doctor_id);
+            const content = document.getElementById('view-content');
+            content.innerHTML = `
+                <p><strong>Patient:</strong> ${appt.patient_name}</p>
+                <p><strong>R4 ID:</strong> ${appt.patient_r4 || 'N/A'}</p>
+                <p><strong>Type:</strong> ${appt.type}</p>
+                <p><strong>Duration:</strong> ${appt.duration}</p>
+                <p><strong>Details:</strong> ${appt.other_type_details || 'None'}</p>
+                <p><strong>Doctor:</strong> ${dr ? dr.username : 'Unknown'}</p>
+            `;
+            document.getElementById('view-modal').classList.remove('hidden');
+        }
+
+        async function deleteAppt(e, id) {
+            e.stopPropagation();
+            if(confirm("Delete this appointment?")) {
+                await fetch(`${API_URL}/appointments/${id}`, { method: 'DELETE' });
+                loadData();
+            }
+        }
+
+        async function moveAppt(e, id, dir) {
+            e.stopPropagation();
+            const card = document.getElementById(`appt-${id}`);
+            if(!card) return;
+            const container = card.parentElement;
+            
+            const sibling = dir === -1 ? card.previousElementSibling : card.nextElementSibling;
+            if(sibling && sibling.classList.contains('appt-card')) {
+                if(dir === -1) container.insertBefore(card, sibling);
+                else container.insertBefore(sibling, card);
+                
+                const newOrderIds = Array.from(container.querySelectorAll('.appt-card')).map(el => el.id.replace('appt-', ''));
+                await fetch(`${API_URL}/appointments/reorder`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ ids: newOrderIds })
+                });
+            }
+        }
+
+        // --- Matching Logic ---
+        async function performSearch() {
+            const q = document.getElementById('search-input').value;
+            const res = await fetch(`${API_URL}/doctors?student_id=${q}`);
+            const docs = await res.json();
+            const container = document.getElementById('search-results');
+            container.innerHTML = '';
+            container.classList.remove('hidden');
+            
+            if(docs.length === 0) { container.innerHTML = '<div class="p-2 text-gray-500">No doctors found.</div>'; return; }
+
+            docs.forEach(d => {
+                if(d.id === user.id) return;
+                container.innerHTML += `
+                    <div class="flex justify-between items-center p-2 hover:bg-gray-50 border-b">
+                        <span>Dr. ${d.username} (${d.student_id})</span>
+                        <button onclick="sendMatchRequest('${d.student_id}')" class="text-xs bg-green-600 text-white px-2 py-1 rounded">Connect</button>
+                    </div>`;
+            });
+        }
+
+        async function sendMatchRequest(targetId) {
+            const res = await fetch(`${API_URL}/match-request`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    from_id: user.id,
+                    from_name: user.username,
+                    to_student_id: targetId
+                })
+            });
+            if(res.ok) { alert("Request Sent!"); document.getElementById('search-results').classList.add('hidden'); }
+            else alert("Error sending request");
+        }
+
+        function renderRequests(requests) {
+            const list = document.getElementById('requests-list');
+            if(requests.length === 0) { list.innerHTML = '<span class="text-gray-400 italic">No pending requests</span>'; return; }
+            
+            list.innerHTML = requests.map(r => `
+                <div class="flex justify-between items-center bg-blue-50 p-2 rounded mb-1">
+                    <span>Dr. ${r.from_name}</span>
+                    <button onclick="acceptMatch('${r.id}')" class="text-xs bg-blue-600 text-white px-2 py-1 rounded">Accept</button>
+                </div>
+            `).join('');
+        }
+
+        async function acceptMatch(reqId) {
+            await fetch(`${API_URL}/match-accept/${reqId}`, { method: 'POST' });
+            loadData();
+        }
+
+        function renderConnectedList() {
+            const list = document.getElementById('connected-list');
+            // Filter out self
+            const others = connectedDoctors.filter(d => d.id !== user.id);
+            if(others.length === 0) { list.innerHTML = '<span class="text-gray-400 text-xs">No connections yet</span>'; return; }
+
+            list.innerHTML = others.map(d => `
+                <div class="flex items-center bg-gray-100 px-2 py-1 rounded text-xs">
+                    <span class="w-2 h-2 rounded-full mr-1" style="background:${d.color}"></span>
+                    ${d.username}
+                    <button onclick="removeMatch('${d.id}')" class="ml-2 text-red-500 font-bold">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        async function removeMatch(targetId) {
+            if(confirm("Remove this doctor from your view?")) {
+                await fetch(`${API_URL}/matches/${user.id}/${targetId}`, { method: 'DELETE' });
+                loadData();
+            }
+        }
+
+        // --- Color Logic ---
+        async function changeColor(newColor) {
+            // 1. Update Local State Immediately
+            user.color = newColor;
+            localStorage.setItem('dentist_user', JSON.stringify(user));
+            
+            // 2. Update Backend
+            await fetch(`${API_URL}/doctors/${user.id}/color`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ color: newColor })
+            });
+            loadData();
+        }
+
+        // --- Patient List Logic ---
+        document.getElementById('patient-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('new-p-name').value;
+            const r4 = document.getElementById('new-p-r4').value;
+            
+            await fetch(`${API_URL}/patients`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ doctor_id: user.id, name, r4 })
+            });
+            e.target.reset();
+            loadData();
+        });
+
+        function renderPatients(patients) {
+            const tbody = document.getElementById('patient-list');
+            tbody.innerHTML = patients.map(p => `
+                <div class="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded shadow-sm cursor-grab active:cursor-grabbing flex items-center gap-2" draggable="true" ondragstart="dragPatient(event, '${p.id}')">
+                    <span class="font-bold">${p.name}</span>
+                    ${p.r4 ? `<span class="text-xs bg-white px-1 rounded border">${p.r4}</span>` : ''}
+                    <button onclick="deletePatient('${p.id}')" class="text-red-400 hover:text-red-600 font-bold ml-1">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        async function deletePatient(pid) {
+            if(confirm("Delete patient?")) {
+                await fetch(`${API_URL}/patients/${pid}`, { method: 'DELETE' });
+                loadData();
+            }
+        }
+
+        // --- Drag and Drop Logic ---
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function drag(ev, id) {
+            ev.dataTransfer.setData("type", "appointment");
+            ev.dataTransfer.setData("id", id);
+        }
+
+        function dragPatient(ev, id) {
+            ev.dataTransfer.setData("type", "patient");
+            ev.dataTransfer.setData("id", id);
+        }
+
+        async function drop(ev) {
+            ev.preventDefault();
+            const type = ev.dataTransfer.getData("type");
+            
+            // Find the slot element (could be dropped on a child)
+            let target = ev.target;
+            while(!target.classList.contains('slot-cell')) {
+                target = target.parentElement;
+                if(!target) return;
+            }
+            const day = target.getAttribute('data-day');
+            const session = target.getAttribute('data-session');
+
+            if (type === "patient") {
+                // Dragged a patient -> Open Booking
+                const patId = ev.dataTransfer.getData("id");
+                openModal(day, session);
+                document.getElementById('p-select').value = patId;
+            } 
+            else if (type === "appointment") {
+                // Dragged an appointment -> Move/Reorder
+                const apptId = ev.dataTransfer.getData("id");
+                
+                // 1. Move to new slot
+                await fetch(`${API_URL}/appointments/${apptId}/move`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ day, session })
+                });
+
+                // 2. Reorder (Update Ranks based on new DOM order)
+                const newOrderIds = Array.from(slot.querySelectorAll('.appt-card')).map(el => el.id.replace('appt-', ''));
+                
+                await fetch(`${API_URL}/appointments/reorder`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ ids: newOrderIds })
+                });
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('dentist_user');
+            window.location.href = 'index.html';
+        }
+
+        loadData();
+    </script>
+</body>
+</html>

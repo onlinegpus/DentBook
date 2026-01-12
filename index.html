@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DentBook - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-blue-50 min-h-screen flex items-center justify-center">
+
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        <h1 class="text-3xl font-bold text-center text-blue-600 mb-6">Dent4Book</h1>
+
+        <!-- Tabs -->
+        <div class="flex border-b mb-4">
+            <button id="tab-login" class="w-1/2 py-2 text-blue-600 border-b-2 border-blue-600 font-semibold" onclick="switchTab('login')">Sign In</button>
+            <button id="tab-register" class="w-1/2 py-2 text-gray-500" onclick="switchTab('register')">Register</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="login-form" class="space-y-4">
+            <input type="text" id="login-id" placeholder="Student ID" class="w-full p-2 border rounded" required>
+            <input type="password" id="login-pass" placeholder="Password" class="w-full p-2 border rounded" required>
+            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Sign In</button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="register-form" class="space-y-4 hidden">
+            <input type="text" id="reg-id" placeholder="Student ID" class="w-full p-2 border rounded" required>
+            <input type="text" id="reg-user" placeholder="Your Name (Username)" class="w-full p-2 border rounded" required>
+            <input type="password" id="reg-pass" placeholder="Choose Password" class="w-full p-2 border rounded" required>
+            
+            <div class="flex gap-2">
+                <input list="country-codes" id="reg-code" value="+968" placeholder="Code" class="w-1/3 p-2 border rounded" required>
+                <input type="tel" id="reg-phone" placeholder="Phone Number" class="w-2/3 p-2 border rounded" required>
+            </div>
+            <datalist id="country-codes">
+                <!-- Populated by JS -->
+            </datalist>
+
+            <button type="submit" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">Create Account</button>
+        </form>
+
+        <p id="msg" class="text-center text-sm mt-4 text-red-500"></p>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:8000';
+        
+        // Populate Country Codes
+        const countries = [
+            {code: "+966", name: "Saudi Arabia"}, {code: "+1", name: "USA/Canada"}, {code: "+44", name: "UK"},
+            {code: "+971", name: "UAE"}, {code: "+965", name: "Kuwait"}, {code: "+973", name: "Bahrain"},
+            {code: "+968", name: "Oman"}, {code: "+974", name: "Qatar"}, {code: "+20", name: "Egypt"},
+            {code: "+962", name: "Jordan"}, {code: "+961", name: "Lebanon"}, {code: "+91", name: "India"},
+            {code: "+63", name: "Philippines"}, {code: "+92", name: "Pakistan"}, {code: "+880", name: "Bangladesh"},
+            {code: "+49", name: "Germany"}, {code: "+33", name: "France"}, {code: "+39", name: "Italy"}
+        ];
+        const datalist = document.getElementById('country-codes');
+        countries.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = `${c.code} (${c.name})`;
+            datalist.appendChild(opt);
+        });
+
+        function switchTab(tab) {
+            document.getElementById('msg').innerText = '';
+            if(tab === 'login') {
+                document.getElementById('login-form').classList.remove('hidden');
+                document.getElementById('register-form').classList.add('hidden');
+                document.getElementById('tab-login').className = "w-1/2 py-2 text-blue-600 border-b-2 border-blue-600 font-semibold";
+                document.getElementById('tab-register').className = "w-1/2 py-2 text-gray-500";
+            } else {
+                document.getElementById('login-form').classList.add('hidden');
+                document.getElementById('register-form').classList.remove('hidden');
+                document.getElementById('tab-login').className = "w-1/2 py-2 text-gray-500";
+                document.getElementById('tab-register').className = "w-1/2 py-2 text-green-600 border-b-2 border-green-600 font-semibold";
+            }
+        }
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const student_id = document.getElementById('login-id').value;
+            const password = document.getElementById('login-pass').value;
+
+            const res = await fetch(`${API_URL}/login`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({student_id, password})
+            });
+
+            if(res.ok) {
+                const user = await res.json();
+                localStorage.setItem('dentist_user', JSON.stringify(user));
+                window.location.href = 'admin.html';
+            } else {
+                document.getElementById('msg').innerText = "Invalid Credentials";
+            }
+        });
+
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const student_id = document.getElementById('reg-id').value;
+            const username = document.getElementById('reg-user').value;
+            const password = document.getElementById('reg-pass').value;
+            const country_code = document.getElementById('reg-code').value;
+            const phone = document.getElementById('reg-phone').value;
+
+            const res = await fetch(`${API_URL}/register`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({student_id, username, password, country_code, phone})
+            });
+
+            if(res.ok) {
+                alert("Registered! Please sign in.");
+                switchTab('login');
+            } else {
+                document.getElementById('msg').innerText = "Student ID already exists";
+            }
+        });
+    </script>
+</body>
+</html>
