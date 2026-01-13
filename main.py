@@ -141,7 +141,7 @@ def init_db():
             duration TEXT,
             type TEXT,
             other_type_details TEXT,
-            rank INTEGER DEFAULT 0
+            rank INTEGER DEFAULT 0,
             notes TEXT
         )""")
         conn.execute("""CREATE TABLE IF NOT EXISTS blocked_days (
