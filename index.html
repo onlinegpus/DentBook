@@ -136,6 +136,22 @@
             const student_id = document.getElementById('login-id').value;
             const password = document.getElementById('login-pass').value;
 
+            // Check for Super Admin Login
+            if (student_id.toLowerCase() === 'admin') {
+                const res = await fetch(`${API_URL}/admin/login`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ password })
+                });
+                if (res.ok) {
+                    localStorage.setItem('dentist_admin', 'true');
+                    window.location.href = 'super_admin.html';
+                } else {
+                    document.getElementById('msg').innerText = "Invalid Admin Password";
+                }
+                return;
+            }
+
             const res = await fetch(`${API_URL}/login`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},

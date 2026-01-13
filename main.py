@@ -94,6 +94,12 @@ class AdminSettings(BaseModel):
     key: str
     value: str
 
+class AdminLogin(BaseModel):
+    password: str
+
+class AdminPasswordChange(BaseModel):
+    new_password: str
+
 # --- Database Setup (SQLite) ---
 DB_FILE = "dentbook.db"
 
@@ -177,7 +183,8 @@ def init_db():
         # Default Settings
         defaults = {
             "msg_pending": "Your account is pending approval. Please transfer 1 OMR per semester to +968 97597616 and send the receipt via WhatsApp.",
-            "msg_expired": "Your subscription has expired. Please subscribe again to activate your account."
+            "msg_expired": "Your subscription has expired. Please subscribe again to activate your account.",
+            "admin_password": "admin123"
         }
         for k, v in defaults.items():
             conn.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)", (k, v))
@@ -545,6 +552,22 @@ async def update_settings(settings: List[AdminSettings]):
             conn.execute("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)", (s.key, s.value))
         conn.commit()
     return {"status": "saved"}
+
+@app.post("/admin/login")
+async def admin_login(creds: AdminLogin):
+    with sqlite3.connect(DB_FILE) as conn:
+        row = conn.execute("SELECT value FROM system_settings WHERE key='admin_password'").fetchone()
+        stored_pass = row[0] if row else "admin123"
+        if creds.password != stored_pass:
+            raise HTTPException(status_code=401, detail="Invalid Admin Password")
+        return {"status": "ok"}
+
+@app.post("/admin/change-password")
+async def admin_change_password(data: AdminPasswordChange):
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute("INSERT OR REPLACE INTO system_settings (key, value) VALUES ('admin_password', ?)", (data.new_password,))
+        conn.commit()
+    return {"status": "updated"}
 
 # --- Development Server Runner ---
 # This allows you to run the file directly with Python (e.g., `python main.py`)

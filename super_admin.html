@@ -23,7 +23,10 @@
     <div id="dashboard" class="hidden p-6 max-w-7xl mx-auto">
         <header class="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
             <h1 class="text-3xl font-bold text-blue-400">Super Admin Control</h1>
-            <button onclick="location.reload()" class="text-red-400 hover:text-red-300">Logout</button>
+            <div>
+                <button onclick="openAdminPassModal()" class="text-blue-400 hover:text-blue-300 mr-4 font-semibold">Change Password</button>
+                <button onclick="adminLogout()" class="text-red-400 hover:text-red-300 font-semibold">Logout</button>
+            </div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -75,18 +78,47 @@
         </div>
     </div>
 
+    <!-- Change Admin Password Modal -->
+    <div id="admin-pass-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-6 rounded-lg w-full max-w-sm border border-gray-700">
+            <h3 class="text-xl font-bold mb-4 text-white">Change Admin Password</h3>
+            <input type="password" id="new-admin-pass" placeholder="New Password" class="w-full p-2 mb-4 bg-gray-700 rounded border border-gray-600 text-white">
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('admin-pass-modal').classList.add('hidden')" class="px-4 py-2 text-gray-400 hover:text-white">Cancel</button>
+                <button onclick="saveAdminPass()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500">Update</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_URL = window.location.origin;
 
-        function adminLogin() {
+        // Check if already logged in (Fast Login)
+        if (localStorage.getItem('dentist_admin') === 'true') {
+            document.getElementById('admin-login').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            loadData();
+        }
+
+        async function adminLogin() {
             const u = document.getElementById('adm-user').value;
             const p = document.getElementById('adm-pass').value;
-            if(u === 'admin' && p === 'admin123') {
+            
+            if (u.toLowerCase() !== 'admin') { alert("Invalid Username"); return; }
+
+            const res = await fetch(`${API_URL}/admin/login`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ password: p })
+            });
+
+            if(res.ok) {
+                localStorage.setItem('dentist_admin', 'true');
                 document.getElementById('admin-login').classList.add('hidden');
                 document.getElementById('dashboard').classList.remove('hidden');
                 loadData();
             } else {
-                alert("Invalid Admin Credentials");
+                alert("Invalid Admin Password");
             }
         }
 
@@ -182,6 +214,27 @@
                 body: JSON.stringify(settings)
             });
             alert("Messages Saved!");
+        }
+
+        function adminLogout() {
+            localStorage.removeItem('dentist_admin');
+            location.reload();
+        }
+
+        function openAdminPassModal() {
+            document.getElementById('admin-pass-modal').classList.remove('hidden');
+        }
+
+        async function saveAdminPass() {
+            const newPass = document.getElementById('new-admin-pass').value;
+            if(!newPass) return;
+            await fetch(`${API_URL}/admin/change-password`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ new_password: newPass })
+            });
+            alert("Password Updated!");
+            document.getElementById('admin-pass-modal').classList.add('hidden');
         }
     </script>
 </body>
