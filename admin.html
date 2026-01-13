@@ -191,7 +191,6 @@
                 <div>
                     <label class="block text-xs font-bold text-gray-500">Duration</label>
                     <select id="p-duration" class="w-full border p-2 rounded">
-                        <option value="15m">15 Minutes</option>
                         <option value="30m">30 Minutes</option>
                         <option value="45m">45 Minutes</option>
                         <option value="1h">1 Hour</option>
@@ -284,8 +283,8 @@
 
         // Duration Map for Sizing (15m = 1 unit)
         const durationMap = {
-            "15m": "h-5", "30m": "h-8", "45m": "h-10", "1h": "h-14",
-            "1h 15m": "h-16", "1h 30m": "h-20", "2h": "h-28", "3h": "h-40"
+            "30m": "h-14", "45m": "h-20", "1h": "h-28",
+            "1h 15m": "h-36", "1h 30m": "h-40", "2h": "h-56", "3h": "h-80"
         };
 
         // --- Date Logic ---
