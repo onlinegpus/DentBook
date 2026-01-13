@@ -272,6 +272,7 @@
         
         // State
         let isDragging = false;
+        let isLoading = false;
         let allAppointments = [];
         let globalBlockedDays = [];
         let globalSlotBlocks = [];
@@ -283,8 +284,8 @@
 
         // Duration Map for Sizing (15m = 1 unit)
         const durationMap = {
-            "30m": "h-14", "45m": "h-20", "1h": "h-28",
-            "1h 15m": "h-36", "1h 30m": "h-40", "2h": "h-56", "3h": "h-80"
+            "30m": "h-12", "45m": "h-14", "1h": "h-16",
+            "1h 15m": "h-20", "1h 30m": "h-24", "2h": "h-32", "3h": "h-48"
         };
 
         // --- Date Logic ---
@@ -371,7 +372,7 @@
                     const color = dr ? dr.color : '#ccc';
                     
                     const card = document.createElement('div');
-                    const heightClass = durationMap[appt.duration] || "h-16";
+                    const heightClass = durationMap[appt.duration] || "h-14";
                     card.className = `text-xs p-2 rounded text-white cursor-pointer shadow appt-card overflow-hidden ${heightClass}`;
                     card.style.backgroundColor = color;
                     card.id = `appt-${appt.id}`; // ID for Drag
@@ -414,40 +415,47 @@
         }
 
         async function loadData() {
-            if(isDragging) return; // Don't refresh while dragging
+            if(isDragging || isLoading) return; // Don't refresh while dragging or loading
+            isLoading = true;
 
-            // Refresh User Data (for matches)
-            const userRes = await fetch(`${API_URL}/doctors/me?id=${user.id}`);
-            if(userRes.ok) user = await userRes.json();
+            try {
+                // Refresh User Data (for matches)
+                const userRes = await fetch(`${API_URL}/doctors/me?id=${user.id}`);
+                if(userRes.ok) user = await userRes.json();
 
-            // Fetch Connected Doctors Details
-            connectedDoctors = [user];
-            if(user.matches.length > 0) {
-                const matchRes = await fetch(`${API_URL}/doctors/batch?ids=${user.matches.join(',')}`);
-                const matches = await matchRes.json();
-                connectedDoctors = [user, ...matches];
+                // Fetch Connected Doctors Details
+                connectedDoctors = [user];
+                if(user.matches.length > 0) {
+                    const matchRes = await fetch(`${API_URL}/doctors/batch?ids=${user.matches.join(',')}`);
+                    const matches = await matchRes.json();
+                    connectedDoctors = [user, ...matches];
+                }
+
+                const ids = connectedDoctors.map(d => d.id).join(',');
+                const [apptRes, blockRes, reqRes, patRes] = await Promise.all([
+                    fetch(`${API_URL}/appointments?doctor_ids=${ids}`),
+                    fetch(`${API_URL}/blocked-days?doctor_id=${user.id}`),
+                    fetch(`${API_URL}/match-requests?to_student_id=${user.student_id}`),
+                    fetch(`${API_URL}/patients?doctor_id=${user.id}`)
+                ]);
+                
+                globalBlockedDays = await blockRes.json();
+                globalSlotBlocks = await (await fetch(`${API_URL}/global-blocks?doctor_ids=${ids}`)).json();
+                const appts = await apptRes.json();
+                allAppointments = appts;
+                
+                updateGridDates();
+                renderCalendar(appts, globalBlockedDays, globalSlotBlocks);
+                renderRequests(await reqRes.json());
+                renderConnectedList();
+                
+                myPatients = await patRes.json();
+                renderPatients(myPatients);
+            } catch (error) {
+                console.error("Sync error:", error);
+            } finally {
+                isLoading = false;
             }
-
-            const ids = connectedDoctors.map(d => d.id).join(',');
-            const [apptRes, blockRes, reqRes, patRes] = await Promise.all([
-                fetch(`${API_URL}/appointments?doctor_ids=${ids}`),
-                fetch(`${API_URL}/blocked-days?doctor_id=${user.id}`),
-                fetch(`${API_URL}/match-requests?to_student_id=${user.student_id}`),
-                fetch(`${API_URL}/patients?doctor_id=${user.id}`)
-            ]);
-            
-            globalBlockedDays = await blockRes.json();
-            globalSlotBlocks = await (await fetch(`${API_URL}/global-blocks?doctor_ids=${ids}`)).json();
-            const appts = await apptRes.json();
-            allAppointments = appts;
-            
-            updateGridDates();
-            renderCalendar(appts, globalBlockedDays, globalSlotBlocks);
-            renderRequests(await reqRes.json());
-            renderConnectedList();
-            
-            myPatients = await patRes.json();
-            renderPatients(myPatients);
         }
 
         function changeWeek(offset) {
@@ -784,7 +792,7 @@
         }
 
         loadData();
-        setInterval(loadData, 3000); // Live action every 3 seconds
+        setInterval(loadData, 5000); // Live action every 5 seconds
     </script>
 </body>
 </html>
