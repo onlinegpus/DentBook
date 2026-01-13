@@ -58,8 +58,14 @@
 
         <!-- Register Form -->
         <form id="register-form" class="space-y-4 hidden">
-            <input type="text" id="reg-id" placeholder="Student ID (e.g. m2035)" class="w-full p-2 border rounded" required>
-            <input type="text" id="reg-user" placeholder="Your Name (e.g. Ahmed)" class="w-full p-2 border rounded" required>
+            <div class="relative">
+                <input type="text" id="reg-id" placeholder="Student ID" class="w-full p-2 border rounded peer" required>
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none hidden peer-placeholder-shown:block opacity-70">example: m2035</span>
+            </div>
+            <div class="relative">
+                <input type="text" id="reg-user" placeholder="Your Name" class="w-full p-2 border rounded peer" required>
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none hidden peer-placeholder-shown:block opacity-70">example: Ahmed</span>
+            </div>
             <input type="password" id="reg-pass" placeholder="Choose Password" class="w-full p-2 border rounded" required>
             
             <div class="flex gap-2">
