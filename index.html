@@ -294,6 +294,45 @@
             }
         });
 
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const student_id = document.getElementById('reg-id').value;
+            const username = document.getElementById('reg-user').value;
+            const password = document.getElementById('reg-pass').value;
+            const country_code = document.getElementById('reg-code').value;
+            const phone = document.getElementById('reg-phone').value;
+
+            // 1. Validate Student ID (F or M followed by 3-5 digits)
+            const idRegex = /^[FfMm]\d{3,5}$/;
+            if (!idRegex.test(student_id)) {
+                triggerMascotError();
+                document.getElementById('msg').innerText = "Student ID must start with F or M followed by 3-5 numbers (e.g. M2035)";
+                return;
+            }
+
+            // 2. Validate Name (No numbers allowed)
+            if (/\d/.test(username)) {
+                triggerMascotError();
+                document.getElementById('msg').innerText = "Name cannot contain numbers";
+                return;
+            }
+
+            const res = await fetch(`${API_URL}/register`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({student_id, username, password, country_code, phone})
+            });
+
+            if(res.ok) {
+                const data = await res.json();
+                document.getElementById('success-msg').innerText = data.message;
+                document.getElementById('success-modal').classList.remove('hidden');
+            } else {
+                triggerMascotError();
+                document.getElementById('msg').innerText = "Student ID already exists";
+            }
+        });
+
         /* --- MASCOT LOGIC --- */
         const pupilLeft = document.getElementById('pupil-left');
         const pupilRight = document.getElementById('pupil-right');
