@@ -224,6 +224,11 @@
                     <input type="text" id="p-other" class="w-full border p-2 rounded mt-2 hidden" placeholder="Specify other type...">
                 </div>
 
+                <div>
+                    <label class="block text-xs font-bold text-gray-500">Notes (Optional)</label>
+                    <textarea id="p-notes" class="w-full border p-2 rounded" rows="2" placeholder="Add any notes..."></textarea>
+                </div>
+
                 <div class="flex justify-end gap-2 mt-4">
                     <button type="button" onclick="closeModal()" class="px-4 py-2 text-gray-500">Cancel</button>
                     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
@@ -374,8 +379,8 @@
                     card.innerHTML = `
                         <div class="flex items-center h-full gap-1">
                             <div class="flex flex-col -space-y-1 justify-center">
-                                <button onclick="moveAppt(event, '${appt.id}', -1)" class="text-[10px] leading-none hover:text-white opacity-70 hover:opacity-100">▲</button>
-                                <button onclick="moveAppt(event, '${appt.id}', 1)" class="text-[10px] leading-none hover:text-white opacity-70 hover:opacity-100">▼</button>
+                                <button onclick="moveAppt(event, '${appt.id}', -1)" class="text-lg p-1 leading-none hover:text-white opacity-70 hover:opacity-100">▲</button>
+                                <button onclick="moveAppt(event, '${appt.id}', 1)" class="text-lg p-1 leading-none hover:text-white opacity-70 hover:opacity-100">▼</button>
                             </div>
                             <div class="flex-1 min-w-0 flex flex-col justify-center leading-tight">
                                 <div class="font-bold truncate text-xs">${appt.patient_name}</div>
@@ -514,7 +519,8 @@
                 patient_r4: pat.r4 || "",
                 duration: document.getElementById('p-duration').value,
                 type: document.getElementById('p-type').value,
-                other_type_details: document.getElementById('p-other').value
+                other_type_details: document.getElementById('p-other').value,
+                notes: document.getElementById('p-notes').value
             };
 
             await fetch(`${API_URL}/appointments`, {
@@ -538,6 +544,7 @@
                 <p><strong>Type:</strong> ${appt.type}</p>
                 <p><strong>Duration:</strong> ${appt.duration}</p>
                 <p><strong>Details:</strong> ${appt.other_type_details || 'None'}</p>
+                <p><strong>Notes:</strong> ${appt.notes || 'None'}</p>
                 <p><strong>Doctor:</strong> ${dr ? dr.username : 'Unknown'}</p>
             `;
             document.getElementById('view-modal').classList.remove('hidden');

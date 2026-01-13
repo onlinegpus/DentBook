@@ -8,6 +8,7 @@ import datetime
 import sqlite3
 import random
 import os
+import re
 # --- App Configuration ---
 app = FastAPI(
     title="Task Management API",
@@ -64,6 +65,7 @@ class Appointment(BaseModel):
     type: str
     other_type_details: Optional[str] = None
     rank: int = 0
+    notes: Optional[str] = None
 
 class ColorUpdate(BaseModel):
     color: str
@@ -140,6 +142,7 @@ def init_db():
             type TEXT,
             other_type_details TEXT,
             rank INTEGER DEFAULT 0
+            notes TEXT
         )""")
         conn.execute("""CREATE TABLE IF NOT EXISTS blocked_days (
             doctor_id TEXT,
@@ -150,6 +153,12 @@ def init_db():
         # Migration: Ensure rank column exists (for existing DBs)
         try:
             conn.execute("ALTER TABLE appointments ADD COLUMN rank INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
+
+        # Migration: Add notes column
+        try:
+            conn.execute("ALTER TABLE appointments ADD COLUMN notes TEXT")
         except sqlite3.OperationalError:
             pass 
         
@@ -213,6 +222,14 @@ async def read_super_admin():
 @app.post("/register", status_code=201)
 async def register(doctor: Doctor):
     with sqlite3.connect(DB_FILE) as conn:
+        # Validation: Student ID (F/M + 3-5 digits)
+        if not re.match(r"^[FfMm]\d{3,5}$", doctor.student_id):
+            raise HTTPException(status_code=400, detail="Student ID must be F or M followed by 3-5 digits (e.g. M2035)")
+        
+        # Validation: Name (No numbers)
+        if any(char.isdigit() for char in doctor.username):
+            raise HTTPException(status_code=400, detail="Name cannot contain numbers")
+
         doctor.student_id = doctor.student_id.lower().strip() # Case insensitive
         cursor = conn.cursor()
         # Check if exists
@@ -397,10 +414,10 @@ async def create_appointment(appt: Appointment):
         new_rank = (row[0] if row[0] is not None else 0) + 1
 
         conn.execute("""INSERT INTO appointments 
-            (id, doctor_id, day, session, patient_name, patient_r4, duration, type, other_type_details, rank) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (id, doctor_id, day, session, patient_name, patient_r4, duration, type, other_type_details, rank, notes) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (appt.id, appt.doctor_id, appt.day, appt.session, appt.patient_name, appt.patient_r4, 
-             appt.duration, appt.type, appt.other_type_details, new_rank))
+             appt.duration, appt.type, appt.other_type_details, new_rank, appt.notes))
         conn.commit()
     return appt
 

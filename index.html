@@ -157,6 +157,19 @@
             const country_code = document.getElementById('reg-code').value;
             const phone = document.getElementById('reg-phone').value;
 
+            // 1. Validate Student ID (F or M followed by 3-5 digits)
+            const idRegex = /^[FfMm]\d{3,5}$/;
+            if (!idRegex.test(student_id)) {
+                document.getElementById('msg').innerText = "Student ID must start with F or M followed by 3-5 numbers (e.g. M2035)";
+                return;
+            }
+
+            // 2. Validate Name (No numbers allowed)
+            if (/\d/.test(username)) {
+                document.getElementById('msg').innerText = "Name cannot contain numbers";
+                return;
+            }
+
             const res = await fetch(`${API_URL}/register`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
