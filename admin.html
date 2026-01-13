@@ -377,16 +377,16 @@
                     card.style.backgroundColor = color;
                     card.id = `appt-${appt.id}`; // ID for Drag
                     card.innerHTML = `
-                        <div class="flex items-center h-full gap-1">
-                            <div class="flex flex-col -space-y-1 justify-center">
-                                <button onclick="moveAppt(event, '${appt.id}', -1)" class="text-xl p-2 leading-none hover:text-white opacity-70 hover:opacity-100">▲</button>
-                                <button onclick="moveAppt(event, '${appt.id}', 1)" class="text-xl p-2 leading-none hover:text-white opacity-70 hover:opacity-100">▼</button>
-                            </div>
-                            <div class="flex-1 min-w-0 flex flex-col justify-center leading-tight">
+                        <div class="flex items-center h-full gap-1 pl-1">
+                            <div class="flex-1 min-w-0 flex flex-col justify-center leading-tight pr-1">
                                 <div class="font-bold truncate text-xs">${appt.patient_name}</div>
                                 <div class="text-[9px] truncate opacity-90">${appt.type}</div>
                             </div>
-                            <button onclick="deleteAppt(event, '${appt.id}')" class="text-sm hover:text-red-200 font-bold px-1 opacity-70 hover:opacity-100" title="Delete">&times;</button>
+                            <div class="flex flex-col justify-between items-center h-full py-0.5">
+                                <button onclick="moveAppt(event, '${appt.id}', -1)" class="text-[10px] leading-none hover:text-white opacity-70 hover:opacity-100">▲</button>
+                                <button onclick="deleteAppt(event, '${appt.id}')" class="text-sm hover:text-red-200 font-bold leading-none opacity-70 hover:opacity-100" title="Delete">&times;</button>
+                                <button onclick="moveAppt(event, '${appt.id}', 1)" class="text-[10px] leading-none hover:text-white opacity-70 hover:opacity-100">▼</button>
+                            </div>
                         </div>
                     `;
                     // Allow move/delete if it's me or a connected doctor (Shared Control)

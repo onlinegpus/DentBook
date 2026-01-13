@@ -51,26 +51,26 @@
 
         <!-- Login Form -->
         <form id="login-form" class="space-y-4">
-            <input type="text" id="login-id" placeholder="Student ID" class="w-full p-2 border rounded" required>
-            <input type="password" id="login-pass" placeholder="Password" class="w-full p-2 border rounded" required>
+            <input type="text" id="login-id" placeholder="Student ID" class="w-full p-2 border rounded" required enterkeyhint="next">
+            <input type="password" id="login-pass" placeholder="Password" class="w-full p-2 border rounded" required enterkeyhint="go">
             <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Sign In</button>
         </form>
 
         <!-- Register Form -->
         <form id="register-form" class="space-y-4 hidden">
             <div class="relative">
-                <input type="text" id="reg-id" placeholder="Student ID" class="w-full p-2 border rounded peer" required>
+                <input type="text" id="reg-id" placeholder="Student ID" class="w-full p-2 border rounded peer" required enterkeyhint="next">
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none hidden peer-placeholder-shown:block opacity-70">example: m2035</span>
             </div>
             <div class="relative">
-                <input type="text" id="reg-user" placeholder="Your Name" class="w-full p-2 border rounded peer" required>
+                <input type="text" id="reg-user" placeholder="Your Name" class="w-full p-2 border rounded peer" required enterkeyhint="next">
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none hidden peer-placeholder-shown:block opacity-70">example: Ahmed</span>
             </div>
-            <input type="password" id="reg-pass" placeholder="Choose Password" class="w-full p-2 border rounded" required>
+            <input type="password" id="reg-pass" placeholder="Choose Password" class="w-full p-2 border rounded" required enterkeyhint="next">
             
             <div class="flex gap-2">
-                <input list="country-codes" id="reg-code" value="+968" placeholder="Code" class="w-1/3 p-2 border rounded" required>
-                <input type="tel" id="reg-phone" placeholder="Phone Number" class="w-2/3 p-2 border rounded" required>
+                <input list="country-codes" id="reg-code" value="+968" placeholder="Code" class="w-1/3 p-2 border rounded" required enterkeyhint="next">
+                <input type="tel" id="reg-phone" placeholder="Phone Number" class="w-2/3 p-2 border rounded" required enterkeyhint="go">
             </div>
             <datalist id="country-codes">
                 <!-- Populated by JS -->
