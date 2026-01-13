@@ -266,6 +266,7 @@
         document.getElementById('my-color').value = user.color;
         
         // State
+        let isDragging = false;
         let allAppointments = [];
         let globalBlockedDays = [];
         let globalSlotBlocks = [];
@@ -408,6 +409,8 @@
         }
 
         async function loadData() {
+            if(isDragging) return; // Don't refresh while dragging
+
             // Refresh User Data (for matches)
             const userRes = await fetch(`${API_URL}/doctors/me?id=${user.id}`);
             if(userRes.ok) user = await userRes.json();
@@ -714,14 +717,18 @@
         }
 
         function drag(ev, id) {
+            isDragging = true;
             ev.dataTransfer.setData("type", "appointment");
             ev.dataTransfer.setData("id", id);
         }
 
         function dragPatient(ev, id) {
+            isDragging = true;
             ev.dataTransfer.setData("type", "patient");
             ev.dataTransfer.setData("id", id);
         }
+
+        document.addEventListener('dragend', () => isDragging = false);
 
         async function drop(ev) {
             ev.preventDefault();
@@ -770,6 +777,7 @@
         }
 
         loadData();
+        setInterval(loadData, 3000); // Live action every 3 seconds
     </script>
 </body>
 </html>

@@ -487,6 +487,26 @@ async def approve_user(user_id: str):
         conn.commit()
     return {"status": "approved"}
 
+@app.post("/admin/deactivate/{user_id}")
+async def deactivate_user(user_id: str):
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute("UPDATE doctors SET status = 'expired' WHERE id = ?", (user_id,))
+        conn.commit()
+    return {"status": "deactivated"}
+
+@app.delete("/admin/delete/{user_id}")
+async def delete_user(user_id: str):
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute("DELETE FROM doctors WHERE id = ?", (user_id,))
+        conn.execute("DELETE FROM appointments WHERE doctor_id = ?", (user_id,))
+        conn.execute("DELETE FROM patients WHERE doctor_id = ?", (user_id,))
+        conn.execute("DELETE FROM matches WHERE doctor_id = ? OR target_id = ?", (user_id, user_id))
+        conn.execute("DELETE FROM match_requests WHERE from_id = ?", (user_id,))
+        conn.execute("DELETE FROM blocked_days WHERE doctor_id = ?", (user_id,))
+        conn.execute("DELETE FROM global_blocks WHERE doctor_id = ?", (user_id,))
+        conn.commit()
+    return {"status": "deleted"}
+
 @app.post("/admin/deactivate-all")
 async def deactivate_all_users():
     with sqlite3.connect(DB_FILE) as conn:
