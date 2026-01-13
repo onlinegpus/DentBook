@@ -32,6 +32,7 @@
                 <div class="bg-gray-700 p-4 rounded shadow">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-bold">Users Management</h2>
+                        <input type="text" id="user-search" placeholder="Search ID, Name, Phone..." class="bg-gray-600 text-white p-2 rounded text-sm w-64 border border-gray-500" oninput="filterUsers()">
                         <button onclick="deactivateAll()" class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700">⚠ Deactivate ALL Users</button>
                     </div>
                     <div class="overflow-x-auto">
@@ -88,17 +89,30 @@
             }
         }
 
+        let allUsers = [];
+
         async function loadData() {
             // Load Users
             const resUsers = await fetch(`${API_URL}/admin/users`);
-            const users = await resUsers.json();
-            renderUsers(users);
+            allUsers = await resUsers.json();
+            allUsers.reverse(); // Newest first
+            filterUsers();
 
             // Load Settings
             const resSettings = await fetch(`${API_URL}/admin/settings`);
             const settings = await resSettings.json();
             document.getElementById('msg-pending').value = settings.msg_pending || "";
             document.getElementById('msg-expired').value = settings.msg_expired || "";
+        }
+
+        function filterUsers() {
+            const q = document.getElementById('user-search').value.toLowerCase();
+            const filtered = allUsers.filter(u => 
+                (u.student_id && u.student_id.toLowerCase().includes(q)) || 
+                (u.username && u.username.toLowerCase().includes(q)) || 
+                (u.phone && u.phone.toLowerCase().includes(q))
+            );
+            renderUsers(filtered);
         }
 
         function renderUsers(users) {
@@ -114,10 +128,11 @@
                             ${u.status.toUpperCase()}
                         </span>
                     </td>
-                    <td class="p-3">
+                    <td class="p-3 flex gap-2">
                         ${u.status === 'pending' || u.status === 'expired' ? 
                             `<button onclick="approveUser('${u.id}')" class="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-500">Approve</button>` 
-                            : '<span class="text-green-400 text-xs">Active</span>'}
+                            : `<button onclick="deactivateUser('${u.id}')" class="bg-yellow-600 text-white px-2 py-1 rounded text-xs hover:bg-yellow-500">Deactivate</button>`}
+                        <button onclick="deleteUser('${u.id}')" class="bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-500">Delete</button>
                     </td>
                 </tr>
             `).join('');
@@ -132,6 +147,20 @@
         async function approveUser(id) {
             await fetch(`${API_URL}/admin/approve/${id}`, { method: 'POST' });
             loadData();
+        }
+
+        async function deactivateUser(id) {
+            if(confirm("Deactivate this user? They will need to re-subscribe.")) {
+                await fetch(`${API_URL}/admin/deactivate/${id}`, { method: 'POST' });
+                loadData();
+            }
+        }
+
+        async function deleteUser(id) {
+            if(confirm("PERMANENTLY DELETE USER? This cannot be undone.")) {
+                await fetch(`${API_URL}/admin/delete/${id}`, { method: 'DELETE' });
+                loadData();
+            }
         }
 
         async function deactivateAll() {
